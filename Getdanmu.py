@@ -4,6 +4,7 @@ import time
 import zlib
 from urllib.parse import urljoin
 
+import parsel
 import xmltodict
 from tqdm import tqdm
 
@@ -89,7 +90,7 @@ class GetDanmuTencent(GetDanmuBase):
 
     def parse(self, _type):
         data_list = []
-        for data in self.data_list:
+        for data in tqdm(self.data_list):
             for item in data.get("barrage_list", []):
                 _d = self.get_data_dict()
                 _d['timepoint'] = int(item.get("time_offset", 0)) / 1000
@@ -107,16 +108,21 @@ class GetDanmuTencent(GetDanmuBase):
 
     def main(self, url, _type):
         self.data_list = []
-        vid = re.search("/([a-zA-Z0-9]+)\.html", url)
-        if vid:
-            vid = vid.group(1)
-        else:
+        res = request_data("GET", url)
+        sel = parsel.Selector(res.text)
+        title = sel.xpath('//title/text()').get()
+        vid = re.findall(f'"title":"{title}","vid":"(.*?)"', res.text)[-1]
+        if not vid:
+            vid = re.search("/([a-zA-Z0-9]+)\.html", url)
+            if vid:
+                vid = vid.group(1)
+        if not vid:
             return self.error("解析vid失败，请检查链接是否正确")
         res = request_data("GET", urljoin(self.api_danmaku_base, vid))
         if res.status_code != 200:
             return self.error("获取弹幕详情失败")
 
-        for k, segment_index in tqdm(res.json().get("segment_index", {}).items()):
+        for k, segment_index in res.json().get("segment_index", {}).items():
             self.data_list.append(
                 request_data("GET",
                              urljoin(self.api_danmaku_segment,
@@ -137,7 +143,7 @@ class GetDanmuBilibili(GetDanmuBase):
 
     def parsel(self, xml_data):
         data_list = re.findall('<d p="(.*?)">(.*?)<\/d>', xml_data)
-        for data in data_list:
+        for data in tqdm(data_list):
             _d = self.get_data_dict()
             _d['content'] = data[1]
             data_time = data[0].split(",")
@@ -178,7 +184,7 @@ class GetDanmuIqiyi(GetDanmuBase):
 
     def parse(self, _type):
         data_list = []
-        for data in self.data_list:
+        for data in tqdm(self.data_list):
             # 解压缩数据
             decompressed_data = zlib.decompress(data)
             data = decompressed_data.decode('utf-8')
@@ -237,7 +243,7 @@ class GetDanmuMgtv(GetDanmuBase):
 
     def parse(self, _type):
         data_list = []
-        for data in self.data_list:
+        for data in tqdm(self.data_list):
             if data.get("data", {}).get("items", []) is None:
                 continue
             for d in data.get("data", {}).get("items", []):
