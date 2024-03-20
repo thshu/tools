@@ -108,14 +108,14 @@ class GetDanmuTencent(GetDanmuBase):
 
     def main(self, url, _type):
         self.data_list = []
-        res = request_data("GET", url)
-        sel = parsel.Selector(res.text)
-        title = sel.xpath('//title/text()').get()
-        vid = re.findall(f'"title":"{title}","vid":"(.*?)"', res.text)[-1]
-        if not vid:
-            vid = re.search("/([a-zA-Z0-9]+)\.html", url)
-            if vid:
-                vid = vid.group(1)
+        # res = request_data("GET", url)
+        # sel = parsel.Selector(res.text)
+        # title = sel.xpath('//title/text()').get()
+        # vid = re.findall(f'"title":"{title}","vid":"(.*?)"', res.text)[-1]
+        # if not vid:
+        vid = re.search("/([a-zA-Z0-9]+)\.html", url)
+        if vid:
+            vid = vid.group(1)
         if not vid:
             return self.error("解析vid失败，请检查链接是否正确")
         res = request_data("GET", urljoin(self.api_danmaku_base, vid))
